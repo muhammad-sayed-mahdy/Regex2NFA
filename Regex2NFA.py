@@ -9,6 +9,7 @@ class InvalidNFA(Exception):
     def __init__(self, *args: object) -> None:
         super().__init__(*args)
 
+SPECIAL_CHARS = {'*', '|', '(', ')'}
 class Regex2NFA:
 
     def __init__(self, regex: str = None) -> None:
@@ -20,10 +21,6 @@ class Regex2NFA:
         self.text = regex
         self.nfa = {}
 
-    def process(self):
-        """transform the regex string into NFA dictionary
-        """
-        self.validate()
 
     def validate(self) -> None:
         """validate the input regex string
@@ -31,13 +28,13 @@ class Regex2NFA:
         Raises:
             InvalidRegex: if the regex string is invalid
         """
-        specialChars = {'*', '|', '(', ')'}
+        
 
         if len(self.text) == 0:
             raise InvalidRegex("Input regex cannot be empty")
 
         for i,c in enumerate(self.text):
-            if not(c.isalnum() or c in specialChars):
+            if not(c.isalnum() or c in SPECIAL_CHARS):
                 raise InvalidRegex(f"{c} is not supported symbol")
             if (c == '*' or c == '|') and (i == 0 or self.text[i-1] == '*' or self.text[i-1] == '|' or self.text[i-1] == '('):
                 raise InvalidRegex(f"Invalid usage of '{c}'")
@@ -57,6 +54,11 @@ class Regex2NFA:
         if self.text[-1] == '|':
             raise InvalidRegex("Invalid usage of '|'")
 
+    def process(self):
+        """transform the regex string into NFA dictionary
+        """
+        self.validate()
+        
     def loadFromFile(self, filename: str):
         """Load NFA from a json file
 
