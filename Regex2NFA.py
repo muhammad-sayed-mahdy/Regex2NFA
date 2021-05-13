@@ -83,14 +83,14 @@ class Regex2NFA:
         """check if the NFA is valid
 
         Raises:
-            Exception: if the NFA is invalid
+            InvalidNFA: if the NFA is invalid
         """
         if "startingState" not in self.nfa:
-            raise Exception("invalid NFA")
+            raise InvalidNFA()
 
         for k, v in self.nfa.items():
             if k != "startingState" and ("isTerminatingState" not in v):
-                raise Exception("invalid NFA")
+                raise InvalidNFA()
 
     def toGraph(self):
         """transform the NFA dictionary into graph and visualize it
