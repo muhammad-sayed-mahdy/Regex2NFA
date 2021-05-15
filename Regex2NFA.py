@@ -38,6 +38,9 @@ class Regex2NFA:
                 raise InvalidRegex(f"{c} is not supported symbol")
             if (c == '*' or c == '|') and (i == 0 or self.text[i-1] == '*' or self.text[i-1] == '|' or self.text[i-1] == '('):
                 raise InvalidRegex(f"Invalid usage of '{c}'")
+            elif (c == ')') and (i == 0 or self.text[i-1] == '|'):
+                raise InvalidRegex(f"Invalid usage of )")
+            
         
         # verify opening and closing brackets
         openBrackets = 0
