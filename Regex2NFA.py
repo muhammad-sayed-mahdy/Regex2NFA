@@ -20,6 +20,7 @@ class Regex2NFA:
         """
         self.text = regex
         self.nfa = {}
+        self.statesCount = 0
 
 
     def validate(self) -> None:
@@ -57,10 +58,115 @@ class Regex2NFA:
         if self.text[-1] == '|':
             raise InvalidRegex("Invalid usage of '|'")
 
+    def addState(self):
+        self.nfa[self.statesCount]['isTerminatingState'] = False
+        self.statesCount += 1
+        return self.statesCount - 1
+
+    def addNFA(self,u,v,event):
+        self.nfa[u][v] = event
+
+    def groupingStage(self, text):
+        events = []
+        i = 0
+        while i < len(text):
+            event = {}
+            if text[i] == '(':
+                j = i
+                brackets = 1
+                while brackets > 0: 
+                    j += 1
+                    if text[j] == ')':
+                        brackets -= 1
+                    if text[j] == '(':
+                        brackets += 1
+                newExp = text[i+1:j]
+                event = self.solve(newExp)
+                events.append(event)
+                i = j
+            if text[i].isalnum():
+                event["type"] = "exp"
+                event["start"] = self.addState()
+                event["end"] = self.addState()
+                self.addNFA(event["start"], event["end"], text[i])
+                events.append(event)
+            if text[i] == '*':
+                event["type"] = "rep"
+                events.append(event)
+            if text[i] == '|':
+                event["type"] = "or"
+                events.append(event)
+            i += 1
+        return events
+
+    def repeatStage(self, grevents):
+        i = 1
+        events = []
+        while i < len(grevents):
+            event = grevents[i-1]
+            if grevents[i]["type"] == 'rep':
+                st = self.addState()
+                en = self.addState()
+                self.addNFA(st,event["start"],"eps")
+                self.addNFA(event["end"], st,"eps")
+                self.addNFA(st, en,"eps")
+                event["start"] = st
+                event["end"] = en
+                events.append(event)
+                i += 1
+            else:
+                events.append(event)
+            i += 1
+        return events
+
+    def concatenateStage(self, rpevents):
+        i = 1
+        events = []
+        while i < len(rpevents):
+            event = rpevents[i-1]
+            if rpevents[i]["type"] == "or":
+                i += 2
+            else:
+                event["start"] = rpevents[i-1]["start"]
+                while rpevents[i]["type"] != "or":
+                    self.addNFA(rpevents[i-1]["end"], rpevents[i]["start"],"eps")
+                    event["end"] = rpevents[i]["end"]
+                    i += 1
+                events.append(event)
+        return events
+
+    def orStage(self, concevents):
+        e = {}
+        e["start"] = self.addState()
+        e["end"] = self.addState()
+        e["type"] = "exp"
+        for i in concevents:
+            self.addNFA(e["start"], i["start"],"eps")
+            self.addNFA(i["end"], e["end"],"eps")
+        return e
+
+    def solve(self, text):
+        # 1- grouping
+        grevents = self.groupingStage(text)
+        # 2- repeatition
+        rpevents = self.repeatStage(grevents)
+        # 3- Concatenation
+        concevents = self.concatenateStage(rpevents)
+        # 4- Oring
+        return self.orStage(concevents)
+                
+
+
+        
+
     def process(self):
         """transform the regex string into NFA dictionary
         """
         self.validate()
+        e = self.solve(self.text)
+        self.nfa["startingState"] = e["start"]
+        self.nfa[e["end"]]['isTerminatingState'] = True
+        
         
     def loadFromFile(self, filename: str):
         """Load NFA from a json file
@@ -115,7 +221,7 @@ class Regex2NFA:
         g.attr('node', shape='circle')
         g.node(starting)
         for u, children in self.nfa.items():
-            for e, v in children.items():
+            for v, e in children.items():
                 g.edge(u, v, label=e)
 
         g.attr('node', shape='plaintext')
