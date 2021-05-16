@@ -59,9 +59,10 @@ class Regex2NFA:
             raise InvalidRegex("Invalid usage of '|'")
 
     def addState(self):
-        self.nfa[self.statesCount]['isTerminatingState'] = False
+        self.nfa[str(self.statesCount)] = {}
+        self.nfa[str(self.statesCount)]['isTerminatingState'] = False
         self.statesCount += 1
-        return self.statesCount - 1
+        return str(self.statesCount-1)
 
     def addNFA(self,u,v,event):
         self.nfa[u][v] = event
@@ -102,9 +103,9 @@ class Regex2NFA:
     def repeatStage(self, grevents):
         i = 1
         events = []
-        while i < len(grevents):
+        while i <= len(grevents):
             event = grevents[i-1]
-            if grevents[i]["type"] == 'rep':
+            if i < len(grevents) and grevents[i]["type"] == 'rep':
                 st = self.addState()
                 en = self.addState()
                 self.addNFA(st,event["start"],"eps")
@@ -125,14 +126,18 @@ class Regex2NFA:
         while i < len(rpevents):
             event = rpevents[i-1]
             if rpevents[i]["type"] == "or":
+                events.append(event)
                 i += 2
             else:
                 event["start"] = rpevents[i-1]["start"]
-                while rpevents[i]["type"] != "or":
+                while i < len(rpevents) and rpevents[i]["type"] != "or":
                     self.addNFA(rpevents[i-1]["end"], rpevents[i]["start"],"eps")
                     event["end"] = rpevents[i]["end"]
                     i += 1
                 events.append(event)
+                i += 2
+        if i == len(rpevents):
+            events.append(rpevents[i-1])
         return events
 
     def orStage(self, concevents):
