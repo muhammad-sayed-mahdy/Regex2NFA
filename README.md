@@ -8,7 +8,7 @@ Transform regular expression to Non-deterministic Finite Automata (NFA)
 
 There are 2 modes of operations:
 1. input a regex string (e.g. `(a|b)*`) after running `python main.py`, it will produce this image  
-   ![image](https://user-images.githubusercontent.com/32793798/118398174-b6c97c80-b657-11eb-9a6a-18ebd79d55be.png)  
+   ![image](https://user-images.githubusercontent.com/32793798/118415391-557ec900-b6aa-11eb-9c1c-9a7a0a85b3c3.png)  
    and it will save the JSON file following the [file structure](#output-json-file-structure) of this regex to `output/NFA.json`
 2. input a json file following the [file structure](#output-json-file-structure), running `python main.py output/example.json` will produce this image   
    ![example](output/example.png)
@@ -25,12 +25,15 @@ the valid symbols are alphanumeric or the following special characters
     "startingState": "stateA",
     "stateA": {
         "isTerminatingState": false,
-        "stateA": "inputCharacter1",
-        "stateB": "inputCharacter2"
+        "inputCharacter1": ["stateA"],
+        "inputCharacter2": ["stateB", "stateC"]
     },
     "stateB": {
         "isTerminatingState": true,
-        "stateA": "inputCharacter2"
+        "inputCharacter2": ["stateA"]
     },
+    "stateC": {
+        "isTerminatingState": true,
+    }
 }
 ``` 
