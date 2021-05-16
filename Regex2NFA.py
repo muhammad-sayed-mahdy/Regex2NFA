@@ -10,6 +10,7 @@ class InvalidNFA(Exception):
         super().__init__(*args)
 
 SPECIAL_CHARS = {'*', '|', '(', ')'}
+EPS = 'ϵ'
 class Regex2NFA:
 
     def __init__(self, regex: str = None) -> None:
@@ -36,11 +37,13 @@ class Regex2NFA:
 
         for i,c in enumerate(self.text):
             if not(c.isalnum() or c in SPECIAL_CHARS):
-                raise InvalidRegex(f"{c} is not supported symbol")
-            if (c == '*' or c == '|') and (i == 0 or self.text[i-1] == '*' or self.text[i-1] == '|' or self.text[i-1] == '('):
-                raise InvalidRegex(f"Invalid usage of '{c}'")
+                raise InvalidRegex(f"'{c}' is not a supported symbol")
+            if c == '*' and (i == 0 or self.text[i-1] == '*' or self.text[i-1] == '|' or self.text[i-1] == '('):
+                raise InvalidRegex(f"Invalid usage of '*'")
+            elif c == '|' and (i == 0 or self.text[i-1] == '|' or self.text[i-1] == '('):
+                raise InvalidRegex(f"Invalid usage of '|'")
             elif (c == ')') and (i == 0 or self.text[i-1] == '|'):
-                raise InvalidRegex(f"Invalid usage of )")
+                raise InvalidRegex(f"Invalid usage of ')'")
             
         
         # verify opening and closing brackets
@@ -58,16 +61,16 @@ class Regex2NFA:
         if self.text[-1] == '|':
             raise InvalidRegex("Invalid usage of '|'")
 
-    def addState(self):
+    def __addState(self):
         self.nfa[str(self.statesCount)] = {}
         self.nfa[str(self.statesCount)]['isTerminatingState'] = False
         self.statesCount += 1
         return str(self.statesCount-1)
 
-    def addNFA(self,u,v,event):
+    def __addNFA(self,u,v,event):
         self.nfa[u][v] = event
 
-    def groupingStage(self, text):
+    def __groupingStage(self, text):
         events = []
         i = 0
         while i < len(text):
@@ -82,14 +85,14 @@ class Regex2NFA:
                     if text[j] == '(':
                         brackets += 1
                 newExp = text[i+1:j]
-                event = self.solve(newExp)
+                event = self.__solve(newExp)
                 events.append(event)
                 i = j
             if text[i].isalnum():
                 event["type"] = "exp"
-                event["start"] = self.addState()
-                event["end"] = self.addState()
-                self.addNFA(event["start"], event["end"], text[i])
+                event["start"] = self.__addState()
+                event["end"] = self.__addState()
+                self.__addNFA(event["start"], event["end"], text[i])
                 events.append(event)
             if text[i] == '*':
                 event["type"] = "rep"
@@ -100,17 +103,17 @@ class Regex2NFA:
             i += 1
         return events
 
-    def repeatStage(self, grevents):
+    def __repeatStage(self, grevents):
         i = 1
         events = []
         while i <= len(grevents):
             event = grevents[i-1]
             if i < len(grevents) and grevents[i]["type"] == 'rep':
-                st = self.addState()
-                en = self.addState()
-                self.addNFA(st,event["start"],"eps")
-                self.addNFA(event["end"], st,"eps")
-                self.addNFA(st, en,"eps")
+                st = self.__addState()
+                en = self.__addState()
+                self.__addNFA(st,event["start"], EPS)
+                self.__addNFA(event["end"], st, EPS)
+                self.__addNFA(st, en, EPS)
                 event["start"] = st
                 event["end"] = en
                 events.append(event)
@@ -120,7 +123,7 @@ class Regex2NFA:
             i += 1
         return events
 
-    def concatenateStage(self, rpevents):
+    def __concatenateStage(self, rpevents):
         i = 1
         events = []
         while i < len(rpevents):
@@ -131,7 +134,7 @@ class Regex2NFA:
             else:
                 event["start"] = rpevents[i-1]["start"]
                 while i < len(rpevents) and rpevents[i]["type"] != "or":
-                    self.addNFA(rpevents[i-1]["end"], rpevents[i]["start"],"eps")
+                    self.__addNFA(rpevents[i-1]["end"], rpevents[i]["start"], EPS)
                     event["end"] = rpevents[i]["end"]
                     i += 1
                 events.append(event)
@@ -140,25 +143,25 @@ class Regex2NFA:
             events.append(rpevents[i-1])
         return events
 
-    def orStage(self, concevents):
+    def __orStage(self, concevents):
         e = {}
-        e["start"] = self.addState()
-        e["end"] = self.addState()
+        e["start"] = self.__addState()
+        e["end"] = self.__addState()
         e["type"] = "exp"
         for i in concevents:
-            self.addNFA(e["start"], i["start"],"eps")
-            self.addNFA(i["end"], e["end"],"eps")
+            self.__addNFA(e["start"], i["start"],EPS)
+            self.__addNFA(i["end"], e["end"],EPS)
         return e
 
-    def solve(self, text):
+    def __solve(self, text):
         # 1- grouping
-        grevents = self.groupingStage(text)
+        grevents = self.__groupingStage(text)
         # 2- repeatition
-        rpevents = self.repeatStage(grevents)
+        rpevents = self.__repeatStage(grevents)
         # 3- Concatenation
-        concevents = self.concatenateStage(rpevents)
+        concevents = self.__concatenateStage(rpevents)
         # 4- Oring
-        return self.orStage(concevents)
+        return self.__orStage(concevents)
                 
 
 
@@ -168,7 +171,7 @@ class Regex2NFA:
         """transform the regex string into NFA dictionary
         """
         self.validate()
-        e = self.solve(self.text)
+        e = self.__solve(self.text)
         self.nfa["startingState"] = e["start"]
         self.nfa[e["end"]]['isTerminatingState'] = True
         
@@ -182,7 +185,6 @@ class Regex2NFA:
         with open(filename, 'r') as f:
             self.nfa = json.load(f)
 
-        self.validateNFA()
 
     def saveToFile(self, filename: str):
         """save the NFA to a json file
@@ -219,6 +221,7 @@ class Regex2NFA:
             del v['isTerminatingState']
 
         g = Digraph("NFA", filename="output/NFA.gv", format='png')
+        g.attr('graph', rankdir='LR')
         g.attr('node', shape='doublecircle')
         for node in terminating:
             g.node(node)
