@@ -113,6 +113,7 @@ class Regex2NFA:
                 en = self.__addState()
                 self.__addNFA(st,event["start"], EPS)
                 self.__addNFA(event["end"], st, EPS)
+                self.__addNFA(event["end"], en, EPS)
                 self.__addNFA(st, en, EPS)
                 event["start"] = st
                 event["end"] = en
@@ -145,6 +146,8 @@ class Regex2NFA:
 
     def __orStage(self, concevents):
         e = {}
+        if len(concevents) == 1:
+            return concevents[0]
         e["start"] = self.__addState()
         e["end"] = self.__addState()
         e["type"] = "exp"
@@ -172,8 +175,18 @@ class Regex2NFA:
         """
         self.validate()
         e = self.__solve(self.text)
-        self.nfa["startingState"] = e["start"]
         self.nfa[e["end"]]['isTerminatingState'] = True
+        for k, v in self.nfa.items():
+            node = {}
+            for a, b in v.items():
+                if a == "isTerminatingState":
+                    node[a] = b
+                    continue
+                if not (b in node):
+                    node[b] = []
+                node[b].append(a)
+            self.nfa[k] = node
+        self.nfa["startingState"] = e["start"]
         
         
     def loadFromFile(self, filename: str):
@@ -229,8 +242,9 @@ class Regex2NFA:
         g.attr('node', shape='circle')
         g.node(starting)
         for u, children in self.nfa.items():
-            for v, e in children.items():
-                g.edge(u, v, label=e)
+            for e, arr in children.items():
+                for v in arr:
+                    g.edge(u, v, label=e)
 
         g.attr('node', shape='plaintext')
         g.node('starting', label='')
