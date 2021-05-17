@@ -14,7 +14,7 @@ if args.oFile:
 if inputFile:
     nfa = Regex2NFA()
     nfa.loadFromFile(inputFile)
-    nfa.toGraph()
+    nfa.toGraph(outputFile)
 
 else:
     while True:
