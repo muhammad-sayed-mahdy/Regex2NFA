@@ -205,6 +205,7 @@ class Regex2NFA:
         Args:
             filename (str): file name
         """
+        filename += ".json"
         with open(filename, "w") as f:
             json.dump(self.nfa, f)
 
@@ -221,7 +222,7 @@ class Regex2NFA:
             if k != "startingState" and ("isTerminatingState" not in v):
                 raise InvalidNFA()
 
-    def toGraph(self):
+    def toGraph(self, filename):
         """transform the NFA dictionary into graph and visualize it
         """
         self.validateNFA()
@@ -233,7 +234,8 @@ class Regex2NFA:
                 terminating.append(k)
             del v['isTerminatingState']
 
-        g = Digraph("NFA", filename="output/NFA.gv", format='png')
+        filename += ".gv"
+        g = Digraph("NFA", filename=filename, format='png')
         g.attr('graph', rankdir='LR')
         g.attr('node', shape='doublecircle')
         for node in terminating:
